@@ -1,6 +1,7 @@
 # Unity Release Bot
 
 Twitter bot to notify new unity release. https://twitter.com/unityreleasebot
+
 [![Build Status](https://travis-ci.org/if1live/unity-release-bot.svg?branch=master)](https://travis-ci.org/if1live/unity-release-bot)
 
 ## Features
