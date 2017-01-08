@@ -26,3 +26,5 @@ _testmain.go
 config.yaml
 db.sqlite3
 .goenv
+*.log
+
