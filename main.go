@@ -109,7 +109,7 @@ func main() {
 	db := NewDB("db.sqlite3")
 
 	c := NewConfig()
-	c = nil
+	//c = nil
 
 	interval := 15 * time.Minute
 	go watchRSS(c, db, rssPatch, categoryPatch, interval)
