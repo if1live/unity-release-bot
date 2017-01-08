@@ -1,0 +1,13 @@
+# https://www.reddit.com/r/golang/comments/35v5bm/best_way_to_run_go_server_as_a_daemon/
+# /etc/systemd/system/makina.service 으로 symlink
+
+[Unit]
+Description=unity-release-bot
+
+[Service]
+ExecStart=/home/pi/service/unity-release-bot/unity-release-bot -log=bot.log
+WorkingDirectory=/home/pi/service/unity-release-bot
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
