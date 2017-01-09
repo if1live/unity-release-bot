@@ -13,28 +13,12 @@ import (
 	"github.com/SlyMarbo/rss"
 )
 
-func insertVersion(row VersionRow, s Sender, db VersionDatabase) {
-	db.insert(row.version, row.category, row.link, row.date)
-}
-func checkVersion(row VersionRow, s Sender, db VersionDatabase) {
-	_, found := db.fetch(row.version)
-	if found {
-		return
-	}
-
-	db.insert(row.version, row.category, row.link, row.date)
-	msg := makeMessage(row.version, row.category, row.link)
-	s.send(msg)
-	log.Printf("New version found : %s\n", row.version)
-}
-
-func watchRSS(c *Config, db VersionDatabase, rssurl string, category string, delay time.Duration) {
+func watchRSS(ctx *Context, rssurl string, category string, delay time.Duration) {
+	log.Printf("RSS [%s] : %s\n", category, rssurl)
 	feed, err := rss.Fetch(rssurl)
 	if err != nil {
 		panic(err)
 	}
-
-	sender := NewSender(c)
 
 	for i := 0; ; {
 		for _, item := range feed.Items {
@@ -48,23 +32,26 @@ func watchRSS(c *Config, db VersionDatabase, rssurl string, category string, del
 			}
 
 			if i == 0 {
-				insertVersion(row, sender, db)
+				ctx.modeCh <- insertModeForce
+				ctx.rowCh <- row
 			} else {
-				checkVersion(row, sender, db)
+				ctx.modeCh <- insertModeCheckVersion
+				ctx.rowCh <- row
 			}
 		}
 
 		time.Sleep(delay)
 		feed.Update()
+		log.Printf("RSS[%s] : %s\n", category, rssurl)
 	}
 }
 
-func watchLatestVersion(c *Config, db VersionDatabase, category string, delay time.Duration) {
-	sender := NewSender(c)
-
+func watchLatestVersion(ctx *Context, category string, delay time.Duration) {
 	for i := 0; ; {
 		f := &RealHTTPFetcher{}
 		version := getLatestVersion(f)
+		log.Printf("Latest Version [%s] : %s\n", category, version)
+
 		link := makeStableReleaseNoteURL(version)
 		row := VersionRow{
 			version:  version,
@@ -74,9 +61,11 @@ func watchLatestVersion(c *Config, db VersionDatabase, category string, delay ti
 		}
 
 		if i == 0 {
-			insertVersion(row, sender, db)
+			ctx.modeCh <- insertModeForce
+			ctx.rowCh <- row
 		} else {
-			checkVersion(row, sender, db)
+			ctx.modeCh <- insertModeCheckVersion
+			ctx.rowCh <- row
 		}
 
 		time.Sleep(delay)
@@ -86,8 +75,18 @@ func watchLatestVersion(c *Config, db VersionDatabase, category string, delay ti
 var logfilename string
 
 func init() {
-	flag.StringVar(&logfilename, "log", "bot.log", "log filename")
+	flag.StringVar(&logfilename, "log", "", "log filename")
 }
+
+type Context struct {
+	config   *Config
+	accessor *DatabaseAccessor
+
+	modeCh chan int
+	rowCh  chan VersionRow
+}
+
+var ctx Context
 
 func main() {
 	flag.Parse()
@@ -107,17 +106,22 @@ func main() {
 	}
 
 	db := NewDB("db.sqlite3")
+	defer db.close()
 
 	c := NewConfig()
-	//c = nil
+	c = nil
+
+	ctx = Context{
+		config:   c,
+		accessor: NewDBAccessor(db, NewSender(c)),
+		modeCh:   make(chan int, 10),
+		rowCh:    make(chan VersionRow, 10),
+	}
 
 	interval := 15 * time.Minute
-	go watchRSS(c, db, rssPatch, categoryPatch, interval)
-	go watchRSS(c, db, rssBeta, categoryBeta, interval)
-	go watchLatestVersion(c, db, categoryStable, interval)
+	go watchRSS(&ctx, rssPatch, categoryPatch, interval)
+	go watchRSS(&ctx, rssBeta, categoryBeta, interval)
+	go watchLatestVersion(&ctx, categoryStable, interval)
 
-	for {
-		delay := 1 * time.Minute
-		time.Sleep(delay)
-	}
+	ctx.accessor.Run(ctx.modeCh, ctx.rowCh)
 }

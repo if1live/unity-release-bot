@@ -4,6 +4,7 @@ package main
 
 import (
 	"database/sql"
+	"log"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -150,5 +151,56 @@ func (d *SqliteVersionDatabase) execute(sql string) {
 func check(err error) {
 	if err != nil {
 		panic(err)
+	}
+}
+
+type DatabaseAccessor struct {
+	db     VersionDatabase
+	sender Sender
+}
+
+const (
+	insertModeFinish       = 0
+	insertModeForce        = 1
+	insertModeCheckVersion = 2
+)
+
+func NewDBAccessor(db VersionDatabase, sender Sender) *DatabaseAccessor {
+	return &DatabaseAccessor{
+		db:     db,
+		sender: sender,
+	}
+}
+
+func (d *DatabaseAccessor) Run(modeCh chan int, rowCh chan VersionRow) {
+	running := true
+	for running == true {
+		select {
+		case m := <-modeCh:
+			switch m {
+			case insertModeFinish:
+				log.Println("stop db accessor")
+				running = false
+
+			case insertModeForce:
+				row := <-rowCh
+				d.db.insert(row.version, row.category, row.link, row.date)
+
+			case insertModeCheckVersion:
+				row := <-rowCh
+				_, found := d.db.fetch(row.version)
+				if found {
+					return
+				}
+
+				d.db.insert(row.version, row.category, row.link, row.date)
+				msg := makeMessage(row.version, row.category, row.link)
+				d.sender.send(msg)
+				log.Printf("New version found : %s\n", row.version)
+			}
+
+		default:
+			//fmt.Println("no row")
+		}
 	}
 }
