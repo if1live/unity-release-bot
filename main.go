@@ -20,7 +20,7 @@ func watchRSS(ctx *Context, rssurl string, category string, delay time.Duration)
 		panic(err)
 	}
 
-	for i := 0; ; {
+	for i := 0; ; i++ {
 		for _, item := range feed.Items {
 			version := strings.Replace(item.Title, "Patch", "", -1)
 			version = strings.Trim(version, " ")
@@ -47,7 +47,7 @@ func watchRSS(ctx *Context, rssurl string, category string, delay time.Duration)
 }
 
 func watchLatestVersion(ctx *Context, category string, delay time.Duration) {
-	for i := 0; ; {
+	for i := 0; ; i++ {
 		f := &RealHTTPFetcher{}
 		version := getLatestVersion(f)
 		log.Printf("Latest Version [%s] : %s\n", category, version)
