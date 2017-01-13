@@ -200,7 +200,9 @@ func (d *DatabaseAccessor) Run(modeCh chan int, rowCh chan VersionRow) {
 			}
 
 		default:
-			//fmt.Println("no row")
+			// CPU 100% 먹는거 방지
+			interval := 1 * time.Second
+			time.Sleep(interval)
 		}
 	}
 }
