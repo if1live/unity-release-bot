@@ -179,8 +179,7 @@ func (d *DatabaseAccessor) Run(initCh, insertCh chan VersionRow, quitCh chan int
 			row := insert
 			_, found := d.db.fetch(row.version)
 			if found {
-				log.Fatalf("same version already exist! %s", row.version)
-				return
+				continue
 			}
 
 			d.db.insert(row.version, row.category, row.link, row.date)
