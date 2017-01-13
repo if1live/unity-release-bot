@@ -34,10 +34,13 @@ func watchRSS(ctx *Context, rssurl string, category string, delay time.Duration)
 
 			if !initialized {
 				ctx.initCh <- row
-				initialized = true
 			} else {
 				ctx.insertCh <- row
 			}
+		}
+
+		if !initialized {
+			initialized = true
 		}
 
 		time.Sleep(delay)
