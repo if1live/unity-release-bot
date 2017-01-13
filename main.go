@@ -20,7 +20,8 @@ func watchRSS(ctx *Context, rssurl string, category string, delay time.Duration)
 		panic(err)
 	}
 
-	for i := 0; ; i++ {
+	initialized := false
+	for {
 		for _, item := range feed.Items {
 			version := strings.Replace(item.Title, "Patch", "", -1)
 			version = strings.Trim(version, " ")
@@ -31,12 +32,11 @@ func watchRSS(ctx *Context, rssurl string, category string, delay time.Duration)
 				link:     item.Link,
 			}
 
-			if i == 0 {
-				ctx.modeCh <- insertModeForce
-				ctx.rowCh <- row
+			if !initialized {
+				ctx.initCh <- row
+				initialized = true
 			} else {
-				ctx.modeCh <- insertModeCheckVersion
-				ctx.rowCh <- row
+				ctx.insertCh <- row
 			}
 		}
 
@@ -47,7 +47,8 @@ func watchRSS(ctx *Context, rssurl string, category string, delay time.Duration)
 }
 
 func watchLatestVersion(ctx *Context, category string, delay time.Duration) {
-	for i := 0; ; i++ {
+	initialized := false
+	for {
 		f := &RealHTTPFetcher{}
 		version := getLatestVersion(f)
 		log.Printf("Latest Version [%s] : %s\n", category, version)
@@ -60,12 +61,11 @@ func watchLatestVersion(ctx *Context, category string, delay time.Duration) {
 			link:     link,
 		}
 
-		if i == 0 {
-			ctx.modeCh <- insertModeForce
-			ctx.rowCh <- row
+		if !initialized {
+			ctx.initCh <- row
+			initialized = true
 		} else {
-			ctx.modeCh <- insertModeCheckVersion
-			ctx.rowCh <- row
+			ctx.insertCh <- row
 		}
 
 		time.Sleep(delay)
@@ -82,8 +82,9 @@ type Context struct {
 	config   *Config
 	accessor *DatabaseAccessor
 
-	modeCh chan int
-	rowCh  chan VersionRow
+	initCh   chan VersionRow
+	insertCh chan VersionRow
+	quitCh   chan int
 }
 
 var ctx Context
@@ -114,8 +115,10 @@ func main() {
 	ctx = Context{
 		config:   c,
 		accessor: NewDBAccessor(db, NewSender(c)),
-		modeCh:   make(chan int, 10),
-		rowCh:    make(chan VersionRow, 10),
+
+		initCh:   make(chan VersionRow, 10),
+		insertCh: make(chan VersionRow, 10),
+		quitCh:   make(chan int),
 	}
 
 	interval := 15 * time.Minute
@@ -123,5 +126,5 @@ func main() {
 	go watchRSS(&ctx, rssBeta, categoryBeta, interval)
 	go watchLatestVersion(&ctx, categoryStable, interval)
 
-	ctx.accessor.Run(ctx.modeCh, ctx.rowCh)
+	ctx.accessor.Run(ctx.initCh, ctx.insertCh, ctx.quitCh)
 }

@@ -159,12 +159,6 @@ type DatabaseAccessor struct {
 	sender Sender
 }
 
-const (
-	insertModeFinish       = 0
-	insertModeForce        = 1
-	insertModeCheckVersion = 2
-)
-
 func NewDBAccessor(db VersionDatabase, sender Sender) *DatabaseAccessor {
 	return &DatabaseAccessor{
 		db:     db,
@@ -172,37 +166,31 @@ func NewDBAccessor(db VersionDatabase, sender Sender) *DatabaseAccessor {
 	}
 }
 
-func (d *DatabaseAccessor) Run(modeCh chan int, rowCh chan VersionRow) {
+func (d *DatabaseAccessor) Run(initCh, insertCh chan VersionRow, quitCh chan int) {
+	//
 	running := true
-	for running == true {
+	for running {
 		select {
-		case m := <-modeCh:
-			switch m {
-			case insertModeFinish:
-				log.Println("stop db accessor")
-				running = false
+		case init := <-initCh:
+			row := init
+			d.db.insert(row.version, row.category, row.link, row.date)
 
-			case insertModeForce:
-				row := <-rowCh
-				d.db.insert(row.version, row.category, row.link, row.date)
-
-			case insertModeCheckVersion:
-				row := <-rowCh
-				_, found := d.db.fetch(row.version)
-				if found {
-					return
-				}
-
-				d.db.insert(row.version, row.category, row.link, row.date)
-				msg := makeMessage(row.version, row.category, row.link)
-				d.sender.send(msg)
-				log.Printf("New version found : %s\n", row.version)
+		case insert := <-insertCh:
+			row := insert
+			_, found := d.db.fetch(row.version)
+			if found {
+				return
 			}
 
-		default:
-			// CPU 100% 먹는거 방지
-			interval := 1 * time.Second
-			time.Sleep(interval)
+			d.db.insert(row.version, row.category, row.link, row.date)
+			msg := makeMessage(row.version, row.category, row.link)
+			d.sender.send(msg)
+			log.Printf("New version found : %s\n", row.version)
+
+		case <-quitCh:
+			log.Println("stop db accessor")
+			running = false
+			return
 		}
 	}
 }
