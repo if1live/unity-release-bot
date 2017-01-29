@@ -113,7 +113,7 @@ func main() {
 	defer db.close()
 
 	c := NewConfig()
-	c = nil
+	// c = nil
 
 	ctx = Context{
 		config:   c,
