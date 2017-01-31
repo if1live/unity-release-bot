@@ -16,18 +16,11 @@ func TestExtractVersion(t *testing.T) {
 			"http://netstorage.unity3d.com/unity/38b4efef76f0/UnityDownloadAssistant-5.5.0f3.exe",
 			"5.5.0f3",
 		},
-		{
-			"UnityDownloadAssistant-5.5.0f3.exe",
-			"5.5.0f3",
-		},
-		{
-			"Unity-12.34.56f78.exe",
-			"12.34.56f78",
-		},
-		{
-			"UnityDaydreamDownloadAssistant-5.4.2f2-GVR13.exe",
-			"5.4.2f2-GVR13",
-		},
+		{"UnityDownloadAssistant-5.5.0f3.exe", "5.5.0f3"},
+		{"Unity-12.34.56f78.exe", "12.34.56f78"},
+		{"UnityDaydreamDownloadAssistant-5.4.2f2-GVR13.exe", "5.4.2f2-GVR13"},
+		{"UnityStandardAssetsSetup-5.5.1f1.exe", "5.5.1f1"},
+		{"CacheServer-5.5.1f1.zip", "5.5.1f1"},
 	}
 
 	for _, c := range cases {
@@ -39,14 +32,13 @@ func TestExtractVersion(t *testing.T) {
 }
 
 func TestGetLatestVersion(t *testing.T) {
-	src1, _ := ioutil.ReadFile("testdata/download-1.html")
-	src2, _ := ioutil.ReadFile("testdata/download-2.html")
+	src, _ := ioutil.ReadFile("testdata/download-stable-5.5.1f1.html")
 	f := &FakeHTTPFetcher{
 		idx:     0,
-		sources: []string{string(src1), string(src2)},
+		sources: []string{string(src)},
 	}
 	version := getLatestVersion(f)
-	assert.Equal(t, "5.5.0f3", version)
+	assert.Equal(t, "5.5.1f1", version)
 }
 
 func TestMakeStableReleaseNoteURL(t *testing.T) {

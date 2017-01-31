@@ -32,23 +32,13 @@ func makeStableReleaseNoteURL(version string) string {
 }
 
 func getLatestVersion(fetcher HTTPFetcher) string {
-	initialURL := "https://store.unity.com/download?ref=personal"
-	initialHTML := fetcher.Fetch(initialURL)
-	// <a href="https://store.unity.com/download/thank-you?thank-you=personal&amp;os=win&amp;nid=178" class="download-btn bg-gr os-windows hide">
-	initialRe := regexp.MustCompile(`"https://store.unity.com/download/thank-you.+" `)
-	results := initialRe.FindAllString(initialHTML, -1)
-	nexturl := results[0]
-	nexturl = strings.Replace(nexturl, `"`, "", -1)
-	nexturl = strings.Trim(nexturl, " ")
-	nexturl = strings.Replace(nexturl, "&amp;", "&", -1)
-
-	html := fetcher.Fetch(nexturl)
-	// downloadUrl = 'http://netstorage.unity3d.com/unity/38b4efef76f0/UnityDownloadAssistant-5.5.0f3.exe';
-	re := regexp.MustCompile(`downloadUrl = '(.+)';`)
+	rawurl := "https://unity3d.com/kr/get-unity/download?ref=professional"
+	html := fetcher.Fetch(rawurl)
+	// http://netstorage.unity3d.com/unity/88d00a7498cd/WindowsStandardAssetsInstaller/UnityStandardAssetsSetup-5.5.1f1.exe
+	// 윈도우 인스톨러를 기준으로 잡아내면 될듯?
+	re := regexp.MustCompile(`"http://netstorage.unity3d.com/unity/\w+/WindowsStandardAssetsInstaller/(.+\.exe)"`)
 	links := re.FindAllStringSubmatch(html, -1)
 	link := links[0][1]
-	// http://netstorage.unity3d.com/unity/38b4efef76f0/UnityDownloadAssistant-5.5.0f3.exe
-
 	version := extractVersion(link)
 	return version
 }
