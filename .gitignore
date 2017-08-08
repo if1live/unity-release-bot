@@ -27,4 +27,4 @@ config.yaml
 db.sqlite3
 .goenv
 *.log
-
+unity-release-bot

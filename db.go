@@ -19,12 +19,12 @@ type VersionDatabase interface {
 }
 
 type VersionRow struct {
-	uid      int
-	version  string
-	category string
-	link     string
-	date     time.Time
-	created  time.Time
+	UID      int       `json:"uid"`
+	Version  string    `json:"version"`
+	Category string    `json:"category"`
+	Link     string    `json:"link"`
+	Date     time.Time `json:"date"`
+	Created  time.Time `json:"created"`
 }
 
 type FakeVersionDatabase struct {
@@ -36,25 +36,25 @@ func (d *FakeVersionDatabase) close() {
 }
 func (d *FakeVersionDatabase) insert(version, category, link string, date time.Time) int64 {
 	for _, r := range d.rows {
-		if r.version == version {
+		if r.Version == version {
 			return -1
 		}
 	}
 
 	v := VersionRow{
-		uid:      len(d.rows) + 1,
-		version:  version,
-		category: category,
-		date:     date,
-		link:     link,
-		created:  time.Now(),
+		UID:      len(d.rows) + 1,
+		Version:  version,
+		Category: category,
+		Date:     date,
+		Link:     link,
+		Created:  time.Now(),
 	}
 	d.rows = append(d.rows, v)
-	return int64(v.uid)
+	return int64(v.UID)
 }
 func (d *FakeVersionDatabase) fetch(version string) (VersionRow, bool) {
 	for _, r := range d.rows {
-		if r.version == version {
+		if r.Version == version {
 			return r, true
 		}
 	}
@@ -117,7 +117,7 @@ func (d *SqliteVersionDatabase) fetch(version string) (VersionRow, bool) {
 	var v VersionRow
 	found := false
 	for rows.Next() {
-		err = rows.Scan(&v.uid, &v.version, &v.category, &v.link, &v.date, &v.created)
+		err = rows.Scan(&v.UID, &v.Version, &v.Category, &v.Link, &v.Date, &v.Created)
 		check(err)
 
 		found = true
@@ -136,7 +136,7 @@ func (d *SqliteVersionDatabase) all() []VersionRow {
 
 	var v VersionRow
 	for rows.Next() {
-		err = rows.Scan(&v.uid, &v.version, &v.category, &v.link, &v.date, &v.created)
+		err = rows.Scan(&v.UID, &v.Version, &v.Category, &v.Link, &v.Date, &v.Created)
 		check(err)
 		versions = append(versions, v)
 	}
@@ -173,19 +173,19 @@ func (d *DatabaseAccessor) Run(initCh, insertCh chan VersionRow, quitCh chan int
 		select {
 		case init := <-initCh:
 			row := init
-			d.db.insert(row.version, row.category, row.link, row.date)
+			d.db.insert(row.Version, row.Category, row.Link, row.Date)
 
 		case insert := <-insertCh:
 			row := insert
-			_, found := d.db.fetch(row.version)
+			_, found := d.db.fetch(row.Version)
 			if found {
 				continue
 			}
 
-			d.db.insert(row.version, row.category, row.link, row.date)
-			msg := makeMessage(row.version, row.category, row.link)
+			d.db.insert(row.Version, row.Category, row.Link, row.Date)
+			msg := makeMessage(row.Version, row.Category, row.Link)
 			d.sender.send(msg)
-			log.Printf("New version found : %s\n", row.version)
+			log.Printf("New version found : %s\n", row.Version)
 
 		case <-quitCh:
 			log.Println("stop db accessor")

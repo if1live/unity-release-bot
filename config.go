@@ -9,15 +9,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-const (
-	categoryStable = "stable"
-	categoryPatch  = "patch"
-	categoryBeta   = "beta"
-
-	rssPatch = "https://unity3d.com/unity/qa/patch-releases/latest.xml"
-	rssBeta  = "https://unity3d.com/unity/beta/latest.xml"
-)
-
 type Config struct {
 	ConsumerKey       string `yaml:"consumer_key"`
 	ConsumerSecret    string `yaml:"consumer_secret"`

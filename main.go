@@ -24,10 +24,10 @@ func watchRSS(ctx *Context, rssurl string, category string, delay time.Duration)
 			version := strings.Replace(item.Title, "Patch", "", -1)
 			version = strings.Trim(version, " ")
 			row := VersionRow{
-				version:  version,
-				category: category,
-				date:     item.Date,
-				link:     item.Link,
+				Version:  version,
+				Category: category,
+				Date:     item.Date,
+				Link:     item.Link,
 			}
 
 			if !initialized {
@@ -56,10 +56,10 @@ func watchLatestVersion(ctx *Context, category string, delay time.Duration) {
 
 		link := h.makeStableReleaseNoteURL(version)
 		row := VersionRow{
-			version:  version,
-			category: category,
-			date:     time.Now(),
-			link:     link,
+			Version:  version,
+			Category: category,
+			Date:     time.Now(),
+			Link:     link,
 		}
 
 		if !initialized {
@@ -74,9 +74,11 @@ func watchLatestVersion(ctx *Context, category string, delay time.Duration) {
 }
 
 var logfilename string
+var port int
 
 func init() {
 	flag.StringVar(&logfilename, "log", "", "log filename")
+	flag.IntVar(&port, "port", 3000, "port")
 }
 
 type Context struct {
@@ -93,8 +95,11 @@ var ctx Context
 func main() {
 	flag.Parse()
 
-	/*
+	mainServer(port)
 
+	// debug server
+
+	/*
 		// initialize logger
 		// http: //stackoverflow.com/questions/19965795/go-golang-write-log-to-file
 		// logger 초기화를 별도 함수에서 할 경우 defer 로 파일이 닫혀서 로그작성이 안된다
