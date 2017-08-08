@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
+	"path"
 
 	"time"
 
@@ -95,45 +97,42 @@ var ctx Context
 func main() {
 	flag.Parse()
 
-	mainServer(port)
-
-	// debug server
-
-	/*
-		// initialize logger
-		// http: //stackoverflow.com/questions/19965795/go-golang-write-log-to-file
-		// logger 초기화를 별도 함수에서 할 경우 defer 로 파일이 닫혀서 로그작성이 안된다
-		// 그래서 그냥 메인함수에서 처리
-		if logfilename != "" {
-			filepath := path.Join(getExecutablePath(), logfilename)
-			f, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-			if err != nil {
-				log.Fatalf("error opening file: %v", err)
-			}
-			defer f.Close()
-			log.SetOutput(f)
+	// initialize logger
+	// http: //stackoverflow.com/questions/19965795/go-golang-write-log-to-file
+	// logger 초기화를 별도 함수에서 할 경우 defer 로 파일이 닫혀서 로그작성이 안된다
+	// 그래서 그냥 메인함수에서 처리
+	if logfilename != "" {
+		filepath := path.Join(getExecutablePath(), logfilename)
+		f, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening file: %v", err)
 		}
+		defer f.Close()
+		log.SetOutput(f)
+	}
 
-		db := NewDB("db.sqlite3")
-		defer db.close()
+	db := NewDB("db.sqlite3")
+	defer db.Close()
 
-		c := NewConfig()
-		// c = nil
+	c := NewConfig()
+	// c = nil
+	ctx = Context{
+		config:   c,
+		accessor: NewDBAccessor(db),
 
-		ctx = Context{
-			config:   c,
-			accessor: NewDBAccessor(db, NewSender(c)),
+		initCh:   make(chan VersionRow, 10),
+		insertCh: make(chan VersionRow, 10),
+		quitCh:   make(chan int),
+	}
 
-			initCh:   make(chan VersionRow, 10),
-			insertCh: make(chan VersionRow, 10),
-			quitCh:   make(chan int),
-		}
+	// dev server
+	svr := NewServer(port, db)
+	svr.Main()
 
-		interval := 15 * time.Minute
-		go watchRSS(&ctx, rssPatch, categoryPatch, interval)
-		go watchRSS(&ctx, rssBeta, categoryBeta, interval)
-		go watchLatestVersion(&ctx, categoryStable, interval)
+	//interval := 15 * time.Minute
+	//go watchRSS(&ctx, rssPatch, categoryPatch, interval)
+	//go watchRSS(&ctx, rssBeta, categoryBeta, interval)
+	//go watchLatestVersion(&ctx, categoryStable, interval)
 
-		ctx.accessor.Run(ctx.initCh, ctx.insertCh, ctx.quitCh)
-	*/
+	//ctx.accessor.Run(ctx.initCh, ctx.insertCh, ctx.quitCh)
 }

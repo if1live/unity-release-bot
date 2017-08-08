@@ -10,14 +10,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type VersionDatabase interface {
-	close()
-	insert(version, category, link string, date time.Time) int64
-	fetch(version string) (VersionRow, bool)
-	all() []VersionRow
-	execute(sql string)
-}
-
 type VersionRow struct {
 	UID      int       `json:"uid"`
 	Version  string    `json:"version"`
@@ -27,76 +19,28 @@ type VersionRow struct {
 	Created  time.Time `json:"created"`
 }
 
-type FakeVersionDatabase struct {
-	rows []VersionRow
-}
-
-func (d *FakeVersionDatabase) close() {
-
-}
-func (d *FakeVersionDatabase) insert(version, category, link string, date time.Time) int64 {
-	for _, r := range d.rows {
-		if r.Version == version {
-			return -1
-		}
-	}
-
-	v := VersionRow{
-		UID:      len(d.rows) + 1,
-		Version:  version,
-		Category: category,
-		Date:     date,
-		Link:     link,
-		Created:  time.Now(),
-	}
-	d.rows = append(d.rows, v)
-	return int64(v.UID)
-}
-func (d *FakeVersionDatabase) fetch(version string) (VersionRow, bool) {
-	for _, r := range d.rows {
-		if r.Version == version {
-			return r, true
-		}
-	}
-
-	v := VersionRow{}
-	return v, false
-}
-func (d *FakeVersionDatabase) all() []VersionRow {
-	return d.rows
-}
-func (d *FakeVersionDatabase) execute(sql string) {
-
-}
-
-type SqliteVersionDatabase struct {
+type VersionDatabase struct {
 	db *sql.DB
 }
 
-func NewDB(filename string) VersionDatabase {
-	if len(filename) == 0 {
-		return &FakeVersionDatabase{
-			rows: []VersionRow{},
-		}
-	}
-
+func NewDB(filename string) *VersionDatabase {
 	db, err := sql.Open("sqlite3", filename)
 	check(err)
-	return &SqliteVersionDatabase{
+	return &VersionDatabase{
 		db: db,
 	}
 }
 
-func (d *SqliteVersionDatabase) close() {
+func (d *VersionDatabase) Close() {
 	d.db.Close()
 	d.db = nil
 }
 
-func (d *SqliteVersionDatabase) insert(version, category, link string, date time.Time) int64 {
+func (d *VersionDatabase) Insert(r *VersionRow) int64 {
 	stmt, err := d.db.Prepare("INSERT INTO versions(version, category, link, date) values(?,?,?,?)")
 	check(err)
 
-	res, err := stmt.Exec(version, category, link, date)
+	res, err := stmt.Exec(r.Version, r.Category, r.Link, r.Date)
 	if err != nil {
 		return -1
 	}
@@ -107,7 +51,7 @@ func (d *SqliteVersionDatabase) insert(version, category, link string, date time
 	return id
 }
 
-func (d *SqliteVersionDatabase) fetch(version string) (VersionRow, bool) {
+func (d *VersionDatabase) Fetch(version string) (VersionRow, bool) {
 	stmt, err := d.db.Prepare("SELECT * FROM versions WHERE version = ?")
 	check(err)
 
@@ -128,10 +72,10 @@ func (d *SqliteVersionDatabase) fetch(version string) (VersionRow, bool) {
 	return v, found
 }
 
-func (d *SqliteVersionDatabase) all() []VersionRow {
+func (d *VersionDatabase) All() []VersionRow {
 	versions := []VersionRow{}
 
-	rows, err := d.db.Query("SELECT * FROM versions")
+	rows, err := d.db.Query("SELECT * FROM versions ORDER BY date")
 	check(err)
 
 	var v VersionRow
@@ -144,7 +88,7 @@ func (d *SqliteVersionDatabase) all() []VersionRow {
 	return versions
 }
 
-func (d *SqliteVersionDatabase) execute(sql string) {
+func (d *VersionDatabase) Execute(sql string) {
 	d.db.Exec(sql)
 }
 
@@ -155,14 +99,12 @@ func check(err error) {
 }
 
 type DatabaseAccessor struct {
-	db     VersionDatabase
-	sender Sender
+	db *VersionDatabase
 }
 
-func NewDBAccessor(db VersionDatabase, sender Sender) *DatabaseAccessor {
+func NewDBAccessor(db *VersionDatabase) *DatabaseAccessor {
 	return &DatabaseAccessor{
-		db:     db,
-		sender: sender,
+		db: db,
 	}
 }
 
@@ -173,18 +115,19 @@ func (d *DatabaseAccessor) Run(initCh, insertCh chan VersionRow, quitCh chan int
 		select {
 		case init := <-initCh:
 			row := init
-			d.db.insert(row.Version, row.Category, row.Link, row.Date)
+			d.db.Insert(&row)
 
 		case insert := <-insertCh:
 			row := insert
-			_, found := d.db.fetch(row.Version)
+			_, found := d.db.Fetch(row.Version)
 			if found {
 				continue
 			}
 
-			d.db.insert(row.Version, row.Category, row.Link, row.Date)
-			msg := makeMessage(row.Version, row.Category, row.Link)
-			d.sender.send(msg)
+			d.db.Insert(&row)
+			//msg := makeMessage(row.Version, row.Category, row.Link)
+			// TODO
+			//d.sender.send(msg)
 			log.Printf("New version found : %s\n", row.Version)
 
 		case <-quitCh:

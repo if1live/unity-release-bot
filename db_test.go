@@ -23,21 +23,24 @@ func TestDB(t *testing.T) {
 	db := NewDB(filepath)
 	b, _ := ioutil.ReadFile("schema.sql")
 	sql := string(b)
-	db.execute(sql)
+	db.Execute(sql)
 
-	version := "5.5.0f3"
-	link := "http://google.com"
-	category := "alpha"
-	db.insert(version, category, link, time.Now())
+	ins := VersionRow{
+		Version:  "5.5.0f3",
+		Link:     "http://google.com",
+		Category: "alpha",
+		Date:     time.Now(),
+	}
+	db.Insert(&ins)
 
-	r, found := db.fetch(version)
-	assert.Equal(t, found, true)
-	assert.Equal(t, r.version, version)
-	assert.Equal(t, r.link, link)
-	assert.Equal(t, r.category, category)
+	found, ok := db.Fetch(ins.Version)
+	assert.Equal(t, ok, true)
+	assert.Equal(t, found.Version, ins.Version)
+	assert.Equal(t, found.Link, ins.Link)
+	assert.Equal(t, found.Category, ins.Category)
 
-	_, found = db.fetch("5.5.0f1")
-	assert.Equal(t, found, false)
+	_, ok = db.Fetch("5.5.0f1")
+	assert.Equal(t, ok, false)
 
-	db.close()
+	db.Close()
 }

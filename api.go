@@ -67,13 +67,89 @@ func handleRSSBeta(w http.ResponseWriter, r *http.Request) {
 	renderJSON(w, feed.Rows())
 }
 
-func mainServer(port int) {
+func handleView(w http.ResponseWriter, r *http.Request) {
+	rows := g_svr.db.All()
+	renderJSON(w, rows)
+}
+
+func handleSyncPatchRSS(w http.ResponseWriter, r *http.Request) {
+	handleSyncCommonRSS(w, r, NewPatchRSS())
+}
+
+func handleSyncBetaRSS(w http.ResponseWriter, r *http.Request) {
+	handleSyncCommonRSS(w, r, NewBetaRSS())
+}
+
+func handleSyncCommonRSS(w http.ResponseWriter, r *http.Request, feed *UnityFeed) {
+	rows := feed.Rows()
+	uids := make([]int64, len(rows))
+	for i, r := range rows {
+		uid := g_svr.db.Insert(&r)
+		uids[i] = uid
+	}
+	renderJSON(w, uids)
+}
+
+func handleSyncLatest(w http.ResponseWriter, r *http.Request) {
+	h := VersionHelper{}
+	v := h.FromURI(UnityDownloadURL)
+	link := h.makeStableReleaseNoteURL(v)
+	row := VersionRow{
+		Version:  v,
+		Category: categoryStable,
+		Date:     time.Now(),
+		Link:     link,
+	}
+	uid := g_svr.db.Insert(&row)
+	renderJSON(w, uid)
+}
+
+func handleDevIndex(w http.ResponseWriter, r *http.Request) {
+	src := `
+<ul>
+<li><a href="/dev/latest-version">latest version</a></li>
+<li><a href="/dev/rss-patch">rss patch</a></li>
+<li><a href="/dev/rss-beta">rss beta</a></li>
+<li><a href="/dev/view">view all</a></li>
+<li><a href="/sync/rss-patch">sync rss patch</a></li>
+<li><a href="/sync/rss-beta">sync rss beta</a></li>
+<li><a href="/sync/latest">sync latest</a></li>
+</ul>
+`
+	w.Header().Set("Content-type", "text/html; charset=utf-8")
+	w.Write([]byte(src))
+}
+
+type Server struct {
+	port int
+	db   *VersionDatabase
+}
+
+func NewServer(port int, db *VersionDatabase) *Server {
+	return &Server{
+		port: port,
+		db:   db,
+	}
+}
+
+var g_svr *Server
+
+func (s *Server) Main() {
+	g_svr = s
+
 	http.HandleFunc("/status", handleStatus)
+	http.HandleFunc("/dev", handleDevIndex)
+
 	http.HandleFunc("/dev/latest-version", handleLatestVersion)
 	http.HandleFunc("/dev/rss-patch", handleRSSPatch)
 	http.HandleFunc("/dev/rss-beta", handleRSSBeta)
+	http.HandleFunc("/dev/view", handleView)
 
-	fmt.Printf("Run server : port=%d\n", port)
-	http.ListenAndServe(":"+strconv.Itoa(port), nil)
+	http.HandleFunc("/sync/rss-patch", handleSyncPatchRSS)
+	http.HandleFunc("/sync/rss-beta", handleSyncBetaRSS)
+	http.HandleFunc("/sync/latest", handleSyncLatest)
+
+	fmt.Printf("Run server : port=%d\n", s.port)
+	http.ListenAndServe(":"+strconv.Itoa(s.port), nil)
 
 }
