@@ -3,8 +3,7 @@ sudo: false
 language: go
 
 go:
-  - 1.6
-  - 1.7
+  - 1.8
   - tip
 
 matrix:
@@ -14,7 +13,7 @@ matrix:
 
 install:
   - # Do nothing. This is needed to prevent default install action "go get -t -v ./..." from happening here (we want it to happen inside script step).
-  
+
 script:
   - go get -t -v ./...
   - go test -v ./...
