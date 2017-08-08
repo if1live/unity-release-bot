@@ -1,16 +1,15 @@
 package main
 
 import (
-	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExtractVersion(t *testing.T) {
+func Test_VersionHelper_extractVersion(t *testing.T) {
 	cases := []struct {
-		filepath string
-		version  string
+		fp      string
+		version string
 	}{
 		// url
 		{
@@ -44,35 +43,32 @@ func TestExtractVersion(t *testing.T) {
 		},
 	}
 
+	h := VersionHelper{}
 	for _, c := range cases {
-		v := extractVersion(c.filepath)
+		v := h.extractVersion(c.fp)
 		if v != c.version {
 			t.Error("Expected ", c.version, ", got ", v)
 		}
 	}
 }
 
-func TestGetLatestVersion(t *testing.T) {
+func Test_VersionHelper_FromURI(t *testing.T) {
 	cases := []struct {
-		file    string
+		uri     string
 		version string
 	}{
 		{"testdata/download-stable-5.5.1f1.html", "5.5.1f1"},
 		{"testdata/download-stable-2017.1.0f3.html", "2017.1.0f3"},
 	}
 
+	h := VersionHelper{}
 	for _, c := range cases {
-		src, _ := ioutil.ReadFile(c.file)
-		f := &FakeHTTPFetcher{
-			idx:     0,
-			sources: []string{string(src)},
-		}
-		version := getLatestVersion(f)
-		assert.Equal(t, c.version, version)
+		v := h.FromURI(c.uri)
+		assert.Equal(t, c.version, v)
 	}
 }
 
-func TestMakeStableReleaseNoteURL(t *testing.T) {
+func Test_VersionHelper_makeStableReleaseNoteURL(t *testing.T) {
 	cases := []struct {
 		version string
 		link    string
@@ -83,8 +79,10 @@ func TestMakeStableReleaseNoteURL(t *testing.T) {
 		{"2017.1.0", "https://unity3d.com/kr/unity/whats-new/unity-2017.1.0"},
 		{"invalid", ""},
 	}
+
+	h := VersionHelper{}
 	for _, c := range cases {
-		v := makeStableReleaseNoteURL(c.version)
+		v := h.makeStableReleaseNoteURL(c.version)
 		if v != c.link {
 			t.Error("Expected ", c.link, ", got ", v)
 		}
