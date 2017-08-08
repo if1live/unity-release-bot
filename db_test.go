@@ -6,21 +6,12 @@ import (
 
 	"io/ioutil"
 
-	"os"
-	"path"
-
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDB(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "unity-release-bot")
-	if err != nil {
-		t.Fatalf("TempDir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	db := NewDB(":memory:")
 
-	filepath := path.Join(tempDir, "test.sqlite3")
-	db := NewDB(filepath)
 	b, _ := ioutil.ReadFile("schema.sql")
 	sql := string(b)
 	db.Execute(sql)
