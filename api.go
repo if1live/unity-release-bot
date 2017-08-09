@@ -84,7 +84,7 @@ func handleSyncCommonRSS(w http.ResponseWriter, r *http.Request, feed *UnityFeed
 	rows := feed.Rows()
 	uids := make([]int64, len(rows))
 	for i, r := range rows {
-		uid := g_svr.db.Insert(&r)
+		uid := g_svr.db.Insert(r)
 		uids[i] = uid
 	}
 	renderJSON(w, uids)
@@ -100,7 +100,7 @@ func handleSyncLatest(w http.ResponseWriter, r *http.Request) {
 		Date:     time.Now(),
 		Link:     link,
 	}
-	uid := g_svr.db.Insert(&row)
+	uid := g_svr.db.Insert(row)
 	renderJSON(w, uid)
 }
 

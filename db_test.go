@@ -22,7 +22,7 @@ func TestDB(t *testing.T) {
 		Category: "alpha",
 		Date:     time.Now(),
 	}
-	db.Insert(&ins)
+	db.Insert(ins)
 
 	found, ok := db.Fetch(ins.Version)
 	assert.Equal(t, ok, true)

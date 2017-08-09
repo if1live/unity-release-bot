@@ -23,8 +23,8 @@ type VersionDatabase struct {
 	db *sql.DB
 }
 
-func NewDB(filename string) *VersionDatabase {
-	db, err := sql.Open("sqlite3", filename)
+func NewDB(fp string) *VersionDatabase {
+	db, err := sql.Open("sqlite3", fp)
 	check(err)
 	return &VersionDatabase{
 		db: db,
@@ -36,7 +36,7 @@ func (d *VersionDatabase) Close() {
 	d.db = nil
 }
 
-func (d *VersionDatabase) Insert(r *VersionRow) int64 {
+func (d *VersionDatabase) Insert(r VersionRow) int64 {
 	stmt, err := d.db.Prepare("INSERT INTO versions(version, category, link, date) values(?,?,?,?)")
 	check(err)
 
@@ -115,7 +115,7 @@ func (d *DatabaseAccessor) Run(initCh, insertCh chan VersionRow, quitCh chan int
 		select {
 		case init := <-initCh:
 			row := init
-			d.db.Insert(&row)
+			d.db.Insert(row)
 
 		case insert := <-insertCh:
 			row := insert
@@ -124,7 +124,7 @@ func (d *DatabaseAccessor) Run(initCh, insertCh chan VersionRow, quitCh chan int
 				continue
 			}
 
-			d.db.Insert(&row)
+			d.db.Insert(row)
 			//msg := makeMessage(row.Version, row.Category, row.Link)
 			// TODO
 			//d.sender.send(msg)
